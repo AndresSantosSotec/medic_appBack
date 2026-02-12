@@ -11,11 +11,31 @@ use Illuminate\Validation\ValidationException;
 
 class AppointmentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $appointments = Appointment::with(['patient', 'doctor', 'branch'])
-            ->orderBy('appointment_date', 'desc')
-            ->paginate(15);
+        $query = Appointment::with(['patient', 'doctor', 'branch'])
+            ->orderBy('appointment_date', 'desc');
+
+        // Filtrar por doctor si el usuario es médico
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            $query->where('doctor_id', $user->doctor->id);
+        }
+
+        if ($request->has('unpaid_only') && $request->unpaid_only) {
+            $query->doesntHave('payment');
+        }
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('doctor_id') && $user->hasRole('admin')) {
+            $query->where('doctor_id', $request->doctor_id);
+        }
+
+        $perPage = $request->input('per_page', 15);
+        $appointments = $query->paginate($perPage);
 
         return response()->json($appointments);
     }
@@ -33,6 +53,12 @@ class AppointmentController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Si es doctor, forzar que la cita sea de él mismo
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            $validated['doctor_id'] = $user->doctor->id;
+        }
+
         $this->checkPatientConflict($validated['patient_id'], $validated['appointment_date']);
 
         $appointment = Appointment::create($validated);
@@ -46,10 +72,18 @@ class AppointmentController extends Controller
         return response()->json($appointment, 201);
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $appointment = Appointment::with(['patient', 'doctor', 'branch', 'payment', 'reminders'])
             ->findOrFail($id);
+
+        // Verificar que el doctor solo vea sus citas
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            if ($appointment->doctor_id !== $user->doctor->id) {
+                abort(403, 'No tienes permiso para ver esta cita.');
+            }
+        }
 
         return response()->json($appointment);
     }
@@ -57,6 +91,14 @@ class AppointmentController extends Controller
     public function update(Request $request, string $id)
     {
         $appointment = Appointment::findOrFail($id);
+
+        // Verificar propiedad
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            if ($appointment->doctor_id !== $user->doctor->id) {
+                abort(403, 'No tienes permiso para editar esta cita.');
+            }
+        }
 
         $validated = $request->validate([
             'patient_id' => 'sometimes|required|exists:patients,id',
@@ -109,7 +151,7 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // 2. Advertencia/Error mismo día (opcional, lo pondré como advertencia en el mensaje si se prefiere, pero el usuario pidió que avise)
+        // 2. Advertencia mismo día
         $dayConflict = Appointment::where('patient_id', $patientId)
             ->whereDate('appointment_date', $appointmentDate->toDateString())
             ->whereIn('status', ['scheduled', 'confirmed', 'in_progress'])
@@ -119,8 +161,6 @@ class AppointmentController extends Controller
             ->first();
 
         if ($dayConflict) {
-             // Podríamos lanzar una excepción diferente o simplemente permitirlo. 
-             // El usuario pidió expresamente que avisara si tiene cita el mismo día.
              $doctorName = $dayConflict->doctor->first_name . ' ' . $dayConflict->doctor->last_name;
              $time = Carbon::parse($dayConflict->appointment_date)->format('H:i');
              throw ValidationException::withMessages([
@@ -129,9 +169,18 @@ class AppointmentController extends Controller
         }
     }
 
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
         $appointment = Appointment::findOrFail($id);
+
+        // Verificar propiedad
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            if ($appointment->doctor_id !== $user->doctor->id) {
+                abort(403, 'No tienes permiso para eliminar esta cita.');
+            }
+        }
+
         $appointment->delete();
 
         return response()->json(['message' => 'Cita eliminada exitosamente'], 200);

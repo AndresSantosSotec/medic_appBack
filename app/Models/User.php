@@ -61,6 +61,11 @@ class User extends Authenticatable
         return $this->hasOne(Doctor::class);
     }
 
+    public function preferences(): HasOne
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
     // Métodos de verificación
     public function hasRole($role): bool
     {

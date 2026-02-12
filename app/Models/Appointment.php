@@ -45,6 +45,11 @@ class Appointment extends Model
         return $this->hasOne(Payment::class);
     }
 
+    public function consultation(): HasOne
+    {
+        return $this->hasOne(Consultation::class);
+    }
+
     public function reminders(): HasMany
     {
         return $this->hasMany(Reminder::class);

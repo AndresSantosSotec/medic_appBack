@@ -8,11 +8,21 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $payments = Payment::with(['appointment', 'patient'])
-            ->orderBy('payment_date', 'desc')
-            ->paginate(15);
+        $perPage = $request->input('per_page', 15);
+        $query = Payment::with(['appointment.doctor', 'patient'])
+            ->orderBy('payment_date', 'desc');
+
+        // Filtrar pagos por doctor logueado
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            $query->whereHas('appointment', function($q) use ($user) {
+                $q->where('doctor_id', $user->doctor->id);
+            });
+        }
+
+        $payments = $query->paginate($perPage);
 
         return response()->json($payments);
     }
@@ -38,7 +48,7 @@ class PaymentController extends Controller
 
     public function show(string $id)
     {
-        $payment = Payment::with(['appointment', 'patient'])
+        $payment = Payment::with(['appointment.doctor', 'patient'])
             ->findOrFail($id);
 
         return response()->json($payment);

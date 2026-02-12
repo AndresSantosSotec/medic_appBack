@@ -12,11 +12,22 @@ class PatientController extends Controller
     {
         $query = Patient::with(['appointments', 'payments']);
 
+        // Filtrar por doctor logueado
         $user = $request->user();
-        if (!$user->hasRole('admin') && $user->doctor) {
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
             $doctor = $user->doctor;
             $query->whereHas('doctors', function($q) use ($doctor) {
                 $q->where('doctors.id', $doctor->id);
+            });
+        }
+
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -43,7 +54,7 @@ class PatientController extends Controller
 
         $patient = Patient::create($validated);
 
-        // Si el usuario es un doctor, relacionar automáticamente el paciente
+        // Relacionar automáticamente el paciente con el doctor logueado
         $user = $request->user();
         if ($user->doctor) {
             $patient->doctors()->attach($user->doctor->id);
@@ -52,10 +63,19 @@ class PatientController extends Controller
         return response()->json($patient, 201);
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $patient = Patient::with(['appointments.doctor', 'payments'])
+        $patient = Patient::with(['appointments.doctor', 'payments', 'doctors'])
             ->findOrFail($id);
+
+        // Verificar que el doctor solo vea sus pacientes
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            $isMyPatient = $patient->doctors->contains('id', $user->doctor->id);
+            if (!$isMyPatient) {
+                abort(403, 'No tienes permiso para ver este paciente.');
+            }
+        }
 
         return response()->json($patient);
     }
@@ -63,6 +83,15 @@ class PatientController extends Controller
     public function update(Request $request, string $id)
     {
         $patient = Patient::findOrFail($id);
+
+        // Verificar propiedad
+        $user = $request->user();
+        if (!$user->hasRole('admin') && !$user->hasRole('receptionist') && $user->doctor) {
+            $isMyPatient = $patient->doctors()->where('doctors.id', $user->doctor->id)->exists();
+            if (!$isMyPatient) {
+                abort(403, 'No tienes permiso para editar este paciente.');
+            }
+        }
 
         $validated = $request->validate([
             'first_name' => 'sometimes|required|string|max:255',
@@ -82,8 +111,14 @@ class PatientController extends Controller
         return response()->json($patient);
     }
 
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
+        // Solo admin puede eliminar pacientes
+        $user = $request->user();
+        if (!$user->hasRole('admin')) {
+            abort(403, 'Solo los administradores pueden eliminar pacientes.');
+        }
+
         $patient = Patient::findOrFail($id);
         $patient->delete();
 

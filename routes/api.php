@@ -22,7 +22,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/user', function (Request $request) {
-        return $request->user()->load(['roles.permissions']);
+        return $request->user()->load(['roles.permissions', 'doctor']);
     });
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -56,4 +56,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reminders
     Route::apiResource('reminders', ReminderController::class);
+
+    // Consultations
+    Route::apiResource('consultations', \App\Http\Controllers\Api\ConsultationController::class);
+
+    // Reports
+    Route::get('reports/dashboard', [\App\Http\Controllers\Api\ReportController::class, 'dashboard']);
+    Route::get('reports/appointments', [\App\Http\Controllers\Api\ReportController::class, 'appointments']);
+    Route::get('reports/doctors', [\App\Http\Controllers\Api\ReportController::class, 'doctors']);
+    Route::get('reports/export/excel', [\App\Http\Controllers\Api\ReportController::class, 'exportExcel']);
+    Route::get('reports/export/pdf', [\App\Http\Controllers\Api\ReportController::class, 'exportPdf']);
+
+    // Preferences
+    Route::get('user/preferences', [\App\Http\Controllers\Api\UserPreferenceController::class, 'show']);
+    Route::put('user/preferences', [\App\Http\Controllers\Api\UserPreferenceController::class, 'update']);
 });

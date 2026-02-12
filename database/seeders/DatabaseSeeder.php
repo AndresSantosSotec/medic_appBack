@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -76,7 +77,7 @@ class DatabaseSeeder extends Seeder
         $doctorRole = Role::create([
             'name' => 'Doctor',
             'slug' => 'doctor',
-            'description' => 'Médico del sistema',
+            'description' => 'Médico del sistema - acceso limitado a sus propios datos',
         ]);
 
         $receptionistRole = Role::create([
@@ -90,11 +91,13 @@ class DatabaseSeeder extends Seeder
         // Admin tiene TODOS los permisos
         $adminRole->permissions()->attach(Permission::all());
 
-        // Doctor puede ver y gestionar pacientes, citas y ver pagos
+        // Doctor puede ver y gestionar sus pacientes, citas y ver pagos
         $doctorRole->permissions()->attach(Permission::whereIn('slug', [
             'view-patients', 'create-patients', 'edit-patients',
             'view-appointments', 'create-appointments', 'edit-appointments',
-            'view-payments',
+            'view-payments', 'create-payments', 'edit-payments',
+            'view-doctors', 'edit-doctors',
+            'view-branches',
         ])->get());
 
         // Recepcionista puede gestionar pacientes, citas y pagos (pero no usuarios ni configuración)
@@ -115,14 +118,6 @@ class DatabaseSeeder extends Seeder
         ]);
         $adminUser->roles()->attach($adminRole);
 
-        // Usuario Doctor
-        $doctorUser = User::create([
-            'name' => 'Dr. Carlos Ramírez',
-            'email' => 'doctor@medicapp.com',
-            'password' => Hash::make('password123'),
-        ]);
-        $doctorUser->roles()->attach($doctorRole);
-
         // Usuario Recepcionista
         $receptionistUser = User::create([
             'name' => 'Ana López',
@@ -131,7 +126,7 @@ class DatabaseSeeder extends Seeder
         ]);
         $receptionistUser->roles()->attach($receptionistRole);
 
-        // Crear sucursales
+        // ===== CREAR SUCURSALES =====
         $branch1 = Branch::create([
             'code' => 'CTR',
             'name' => 'Sucursal Centro',
@@ -154,9 +149,18 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        // Crear doctores
+        // ===== CREAR DOCTORES CON USUARIOS =====
+
+        // Doctor 1 - Carlos Ramírez (Medicina General)
+        $doctorUser1 = User::create([
+            'name' => 'Dr. Carlos Ramírez',
+            'email' => 'doctor@medicapp.com',
+            'password' => Hash::make('password123'),
+        ]);
+        $doctorUser1->roles()->attach($doctorRole);
+
         $doctor1 = Doctor::create([
-            'user_id' => $doctorUser->id,
+            'user_id' => $doctorUser1->id,
             'first_name' => 'Carlos',
             'last_name' => 'Ramírez',
             'specialty' => 'Medicina General',
@@ -167,7 +171,16 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
+        // Doctor 2 - María González (Pediatría)
+        $doctorUser2 = User::create([
+            'name' => 'Dra. María González',
+            'email' => 'maria.gonzalez@medicapp.com',
+            'password' => Hash::make('password123'),
+        ]);
+        $doctorUser2->roles()->attach($doctorRole);
+
         $doctor2 = Doctor::create([
+            'user_id' => $doctorUser2->id,
             'first_name' => 'María',
             'last_name' => 'González',
             'specialty' => 'Pediatría',
@@ -178,7 +191,16 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
+        // Doctor 3 - José Martínez (Cardiología)
+        $doctorUser3 = User::create([
+            'name' => 'Dr. José Martínez',
+            'email' => 'jose.martinez@medicapp.com',
+            'password' => Hash::make('password123'),
+        ]);
+        $doctorUser3->roles()->attach($doctorRole);
+
         $doctor3 = Doctor::create([
+            'user_id' => $doctorUser3->id,
             'first_name' => 'José',
             'last_name' => 'Martínez',
             'specialty' => 'Cardiología',
@@ -189,99 +211,264 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        // Crear pacientes
+        // ===== CREAR PACIENTES =====
+
+        // Pacientes del Dr. Carlos (Medicina General)
         $patient1 = Patient::create([
-            'first_name' => 'Juan',
-            'last_name' => 'Pérez',
-            'date_of_birth' => '1985-03-15',
-            'gender' => 'Masculino',
-            'phone' => '555-2001',
-            'email' => 'juan.perez@example.com',
-            'address' => 'Calle 1, Casa 10',
-            'blood_type' => 'O+',
+            'first_name' => 'Juan', 'last_name' => 'Pérez',
+            'date_of_birth' => '1985-03-15', 'gender' => 'Masculino',
+            'phone' => '555-2001', 'email' => 'juan.perez@example.com',
+            'address' => 'Calle 1, Casa 10', 'blood_type' => 'O+',
         ]);
 
         $patient2 = Patient::create([
-            'first_name' => 'Ana',
-            'last_name' => 'López',
-            'date_of_birth' => '1990-07-22',
-            'gender' => 'Femenino',
-            'phone' => '555-2002',
-            'email' => 'ana.lopez@example.com',
-            'address' => 'Avenida 2, Edificio 5',
-            'blood_type' => 'A+',
+            'first_name' => 'Roberto', 'last_name' => 'García',
+            'date_of_birth' => '1978-11-20', 'gender' => 'Masculino',
+            'phone' => '555-2004', 'email' => 'roberto.garcia@example.com',
+            'address' => 'Blvd. Sur 789', 'blood_type' => 'A-',
+            'allergies' => 'Penicilina',
         ]);
 
         $patient3 = Patient::create([
-            'first_name' => 'Pedro',
-            'last_name' => 'Sánchez',
-            'date_of_birth' => '2015-12-10',
-            'gender' => 'Masculino',
-            'phone' => '555-2003',
-            'email' => null,
-            'address' => 'Colonia Nueva, Casa 25',
-            'blood_type' => 'B+',
+            'first_name' => 'Lucía', 'last_name' => 'Fernández',
+            'date_of_birth' => '1992-06-08', 'gender' => 'Femenino',
+            'phone' => '555-2005', 'email' => 'lucia.fernandez@example.com',
+            'address' => 'Av. Las Flores 321', 'blood_type' => 'B+',
         ]);
 
-        // Crear citas
-        $appointment1 = Appointment::create([
-            'patient_id' => $patient1->id,
-            'doctor_id' => $doctor1->id,
-            'branch_id' => $branch1->id,
-            'appointment_date' => now()->addDays(2)->setTime(10, 0),
-            'duration' => 30,
-            'status' => 'scheduled',
-            'reason' => 'Consulta general',
-            'notes' => 'Primera consulta del paciente',
+        // Pacientes de la Dra. María (Pediatría)
+        $patient4 = Patient::create([
+            'first_name' => 'Pedro', 'last_name' => 'Sánchez',
+            'date_of_birth' => '2015-12-10', 'gender' => 'Masculino',
+            'phone' => '555-2003', 'email' => null,
+            'address' => 'Colonia Nueva, Casa 25', 'blood_type' => 'B+',
         ]);
 
-        $appointment2 = Appointment::create([
-            'patient_id' => $patient2->id,
-            'doctor_id' => $doctor3->id,
-            'branch_id' => $branch2->id,
-            'appointment_date' => now()->addDays(3)->setTime(14, 30),
-            'duration' => 45,
-            'status' => 'confirmed',
-            'reason' => 'Control cardiológico',
+        $patient5 = Patient::create([
+            'first_name' => 'Sofía', 'last_name' => 'Ramírez',
+            'date_of_birth' => '2018-04-22', 'gender' => 'Femenino',
+            'phone' => '555-2006', 'email' => null,
+            'address' => 'Residencial Los Pinos 45', 'blood_type' => 'O+',
         ]);
 
-        $appointment3 = Appointment::create([
-            'patient_id' => $patient3->id,
-            'doctor_id' => $doctor2->id,
+        $patient6 = Patient::create([
+            'first_name' => 'Mateo', 'last_name' => 'López',
+            'date_of_birth' => '2020-08-15', 'gender' => 'Masculino',
+            'phone' => '555-2007', 'email' => null,
+            'address' => 'Calle 5ta Avenida 12', 'blood_type' => 'A+',
+            'allergies' => 'Lactosa',
+        ]);
+
+        // Pacientes del Dr. José (Cardiología)
+        $patient7 = Patient::create([
+            'first_name' => 'Ana', 'last_name' => 'Martínez',
+            'date_of_birth' => '1990-07-22', 'gender' => 'Femenino',
+            'phone' => '555-2002', 'email' => 'ana.martinez@example.com',
+            'address' => 'Avenida 2, Edificio 5', 'blood_type' => 'A+',
+        ]);
+
+        $patient8 = Patient::create([
+            'first_name' => 'Fernando', 'last_name' => 'Castillo',
+            'date_of_birth' => '1965-01-30', 'gender' => 'Masculino',
+            'phone' => '555-2008', 'email' => 'fernando.castillo@example.com',
+            'address' => 'Col. Médica 67', 'blood_type' => 'AB+',
+            'allergies' => 'Aspirina, Ibuprofeno',
+            'medical_history' => 'Hipertensión arterial desde 2010. Infarto leve en 2019.',
+        ]);
+
+        $patient9 = Patient::create([
+            'first_name' => 'Gloria', 'last_name' => 'Vásquez',
+            'date_of_birth' => '1958-09-14', 'gender' => 'Femenino',
+            'phone' => '555-2009', 'email' => 'gloria.v@example.com',
+            'address' => 'Zona 10, Edificio Médico 3-B', 'blood_type' => 'O-',
+            'medical_history' => 'Arritmia cardíaca diagnosticada en 2015.',
+        ]);
+
+        // ===== ASIGNAR PACIENTES A DOCTORES (tabla pivote doctor_patient) =====
+
+        // Dr. Carlos tiene 3 pacientes
+        $doctor1->patients()->attach([$patient1->id, $patient2->id, $patient3->id]);
+
+        // Dra. María tiene 3 pacientes (pediátricos)
+        $doctor2->patients()->attach([$patient4->id, $patient5->id, $patient6->id]);
+
+        // Dr. José tiene 3 pacientes (cardiología)
+        $doctor3->patients()->attach([$patient7->id, $patient8->id, $patient9->id]);
+
+        // ===== CREAR CITAS =====
+
+        // Citas del Dr. Carlos
+        $apt1 = Appointment::create([
+            'patient_id' => $patient1->id, 'doctor_id' => $doctor1->id,
             'branch_id' => $branch1->id,
             'appointment_date' => now()->addDays(1)->setTime(9, 0),
-            'duration' => 30,
-            'status' => 'confirmed',
-            'reason' => 'Control pediátrico',
+            'duration' => 30, 'status' => 'scheduled',
+            'reason' => 'Consulta general', 'notes' => 'Primera consulta del paciente',
         ]);
 
-        // Crear pagos
+        $apt2 = Appointment::create([
+            'patient_id' => $patient2->id, 'doctor_id' => $doctor1->id,
+            'branch_id' => $branch1->id,
+            'appointment_date' => now()->addDays(1)->setTime(10, 0),
+            'duration' => 30, 'status' => 'confirmed',
+            'reason' => 'Seguimiento tratamiento antibiótico',
+        ]);
+
+        $apt3 = Appointment::create([
+            'patient_id' => $patient3->id, 'doctor_id' => $doctor1->id,
+            'branch_id' => $branch1->id,
+            'appointment_date' => now()->addDays(2)->setTime(11, 0),
+            'duration' => 45, 'status' => 'scheduled',
+            'reason' => 'Dolor de espalda crónico',
+        ]);
+
+        // Cita pasada completada del Dr. Carlos
+        $aptPast1 = Appointment::create([
+            'patient_id' => $patient1->id, 'doctor_id' => $doctor1->id,
+            'branch_id' => $branch1->id,
+            'appointment_date' => now()->subDays(3)->setTime(10, 0),
+            'duration' => 30, 'status' => 'completed',
+            'reason' => 'Revisión previa', 'notes' => 'Paciente estable',
+        ]);
+
+        // Citas de la Dra. María
+        $apt4 = Appointment::create([
+            'patient_id' => $patient4->id, 'doctor_id' => $doctor2->id,
+            'branch_id' => $branch1->id,
+            'appointment_date' => now()->addDays(1)->setTime(9, 30),
+            'duration' => 30, 'status' => 'confirmed',
+            'reason' => 'Control pediátrico anual',
+        ]);
+
+        $apt5 = Appointment::create([
+            'patient_id' => $patient5->id, 'doctor_id' => $doctor2->id,
+            'branch_id' => $branch1->id,
+            'appointment_date' => now()->addDays(2)->setTime(10, 0),
+            'duration' => 30, 'status' => 'scheduled',
+            'reason' => 'Vacunación programada',
+        ]);
+
+        $apt6 = Appointment::create([
+            'patient_id' => $patient6->id, 'doctor_id' => $doctor2->id,
+            'branch_id' => $branch1->id,
+            'appointment_date' => now()->addDays(3)->setTime(11, 30),
+            'duration' => 45, 'status' => 'scheduled',
+            'reason' => 'Evaluación de alergias alimentarias',
+        ]);
+
+        // Cita pasada de la Dra. María
+        $aptPast2 = Appointment::create([
+            'patient_id' => $patient4->id, 'doctor_id' => $doctor2->id,
+            'branch_id' => $branch1->id,
+            'appointment_date' => now()->subDays(5)->setTime(14, 0),
+            'duration' => 30, 'status' => 'completed',
+            'reason' => 'Control de crecimiento',
+        ]);
+
+        // Citas del Dr. José
+        $apt7 = Appointment::create([
+            'patient_id' => $patient7->id, 'doctor_id' => $doctor3->id,
+            'branch_id' => $branch2->id,
+            'appointment_date' => now()->addDays(2)->setTime(14, 30),
+            'duration' => 45, 'status' => 'confirmed',
+            'reason' => 'Evaluación cardiológica',
+        ]);
+
+        $apt8 = Appointment::create([
+            'patient_id' => $patient8->id, 'doctor_id' => $doctor3->id,
+            'branch_id' => $branch2->id,
+            'appointment_date' => now()->addDays(3)->setTime(9, 0),
+            'duration' => 60, 'status' => 'scheduled',
+            'reason' => 'Control post-infarto semestral',
+            'notes' => 'Traer estudios de laboratorio recientes',
+        ]);
+
+        $apt9 = Appointment::create([
+            'patient_id' => $patient9->id, 'doctor_id' => $doctor3->id,
+            'branch_id' => $branch2->id,
+            'appointment_date' => now()->addDays(4)->setTime(15, 0),
+            'duration' => 45, 'status' => 'scheduled',
+            'reason' => 'Revisión de arritmia y ajuste de medicación',
+        ]);
+
+        // Citas pasadas del Dr. José
+        $aptPast3 = Appointment::create([
+            'patient_id' => $patient8->id, 'doctor_id' => $doctor3->id,
+            'branch_id' => $branch2->id,
+            'appointment_date' => now()->subDays(7)->setTime(10, 0),
+            'duration' => 60, 'status' => 'completed',
+            'reason' => 'Electrocardiograma de control',
+        ]);
+
+        $aptPast4 = Appointment::create([
+            'patient_id' => $patient9->id, 'doctor_id' => $doctor3->id,
+            'branch_id' => $branch2->id,
+            'appointment_date' => now()->subDays(2)->setTime(16, 0),
+            'duration' => 45, 'status' => 'completed',
+            'reason' => 'Seguimiento de arritmia',
+        ]);
+
+        // ===== CREAR PAGOS =====
+
+        // Pago del Dr. Carlos
         Payment::create([
-            'appointment_id' => $appointment1->id,
-            'patient_id' => $patient1->id,
-            'amount' => 250.00,
-            'payment_method' => 'cash',
-            'status' => 'completed',
-            'payment_date' => now(),
-            'notes' => 'Pago en efectivo',
+            'appointment_id' => $aptPast1->id, 'patient_id' => $patient1->id,
+            'amount' => 250.00, 'payment_method' => 'cash',
+            'status' => 'completed', 'payment_date' => now()->subDays(3),
+            'notes' => 'Pago en efectivo - consulta general',
+        ]);
+
+        // Pago de la Dra. María
+        Payment::create([
+            'appointment_id' => $aptPast2->id, 'patient_id' => $patient4->id,
+            'amount' => 350.00, 'payment_method' => 'credit_card',
+            'status' => 'completed', 'payment_date' => now()->subDays(5),
+            'transaction_id' => 'TXN-PED-' . now()->timestamp,
+            'notes' => 'Control pediátrico',
+        ]);
+
+        // Pagos del Dr. José
+        Payment::create([
+            'appointment_id' => $aptPast3->id, 'patient_id' => $patient8->id,
+            'amount' => 800.00, 'payment_method' => 'transfer',
+            'status' => 'completed', 'payment_date' => now()->subDays(7),
+            'transaction_id' => 'TXN-CARD-' . now()->timestamp,
+            'notes' => 'Electrocardiograma + consulta cardiológica',
         ]);
 
         Payment::create([
-            'appointment_id' => $appointment2->id,
-            'patient_id' => $patient2->id,
-            'amount' => 500.00,
-            'payment_method' => 'credit_card',
-            'status' => 'completed',
-            'payment_date' => now(),
-            'transaction_id' => 'TXN-' . now()->timestamp,
+            'appointment_id' => $aptPast4->id, 'patient_id' => $patient9->id,
+            'amount' => 500.00, 'payment_method' => 'insurance',
+            'status' => 'completed', 'payment_date' => now()->subDays(2),
+            'notes' => 'Cubierto por seguro médico',
         ]);
 
-        $this->command->info('¡Datos de prueba creados exitosamente!');
+        // Pago pendiente
+        Payment::create([
+            'appointment_id' => $apt1->id, 'patient_id' => $patient1->id,
+            'amount' => 250.00, 'payment_method' => 'cash',
+            'status' => 'pending', 'payment_date' => now()->addDays(1),
+        ]);
+
         $this->command->info('');
-        $this->command->info('=== USUARIOS DE PRUEBA ===');
-        $this->command->info('Administrador: admin@medicapp.com / password123');
-        $this->command->info('Doctor: doctor@medicapp.com / password123');
-        $this->command->info('Recepcionista: recepcion@medicapp.com / password123');
+        $this->command->info('╔══════════════════════════════════════════════════════╗');
+        $this->command->info('║       ¡Datos de prueba creados exitosamente!        ║');
+        $this->command->info('╠══════════════════════════════════════════════════════╣');
+        $this->command->info('║  USUARIOS DE PRUEBA                                 ║');
+        $this->command->info('║──────────────────────────────────────────────────────║');
+        $this->command->info('║  Admin:         admin@medicapp.com / password123     ║');
+        $this->command->info('║  Dr. Carlos:    doctor@medicapp.com / password123    ║');
+        $this->command->info('║  Dra. María:    maria.gonzalez@medicapp.com          ║');
+        $this->command->info('║  Dr. José:      jose.martinez@medicapp.com           ║');
+        $this->command->info('║  Recepción:     recepcion@medicapp.com               ║');
+        $this->command->info('║                 (Todos: password123)                 ║');
+        $this->command->info('╠══════════════════════════════════════════════════════╣');
+        $this->command->info('║  DATOS CREADOS                                      ║');
+        $this->command->info('║──────────────────────────────────────────────────────║');
+        $this->command->info('║  3 Doctores (3 pacientes cada uno)                  ║');
+        $this->command->info('║  9 Pacientes con relaciones correctas               ║');
+        $this->command->info('║  13 Citas (4 completadas, 9 futuras)                ║');
+        $this->command->info('║  5 Pagos (4 completados, 1 pendiente)               ║');
+        $this->command->info('╚══════════════════════════════════════════════════════╝');
     }
 }
-
