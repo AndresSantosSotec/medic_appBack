@@ -8,10 +8,19 @@ use Illuminate\Http\Request;
 
 class PatientController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $patients = Patient::with(['appointments', 'payments'])
-            ->orderBy('created_at', 'desc')
+        $query = Patient::with(['appointments', 'payments']);
+
+        $user = $request->user();
+        if (!$user->hasRole('admin') && $user->doctor) {
+            $doctor = $user->doctor;
+            $query->whereHas('doctors', function($q) use ($doctor) {
+                $q->where('doctors.id', $doctor->id);
+            });
+        }
+
+        $patients = $query->orderBy('created_at', 'desc')
             ->paginate(15);
 
         return response()->json($patients);
@@ -33,6 +42,12 @@ class PatientController extends Controller
         ]);
 
         $patient = Patient::create($validated);
+
+        // Si el usuario es un doctor, relacionar automáticamente el paciente
+        $user = $request->user();
+        if ($user->doctor) {
+            $patient->doctors()->attach($user->doctor->id);
+        }
 
         return response()->json($patient, 201);
     }

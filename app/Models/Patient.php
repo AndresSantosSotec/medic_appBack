@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Patient extends Model
 {
@@ -37,5 +38,10 @@ class Patient extends Model
     public function reminders(): HasMany
     {
         return $this->hasMany(Reminder::class);
+    }
+
+    public function doctors(): BelongsToMany
+    {
+        return $this->belongsToMany(Doctor::class);
     }
 }

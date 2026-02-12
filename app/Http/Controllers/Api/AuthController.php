@@ -29,7 +29,7 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
+            'user' => $user->load(['roles.permissions']),
         ], 201);
     }
 
@@ -40,7 +40,7 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->with(['roles.permissions'])->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
