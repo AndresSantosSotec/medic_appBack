@@ -13,8 +13,23 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 
 // Rutas públicas de autenticación
+
+Route::get('/test', function () {
+    return response()->json(['message' => 'API is working']);
+});
+
+Route::get('/BD-Check', function () {
+    try {
+        DB::connection()->getPdo();
+        return response()->json(['message' => 'Database connection successful']);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Database connection failed', 'error' => $e->getMessage()], 500);
+    }
+});
+
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
