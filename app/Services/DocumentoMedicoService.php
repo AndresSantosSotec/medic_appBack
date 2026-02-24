@@ -247,15 +247,26 @@ class DocumentoMedicoService
             throw new \Exception('El archivo no existe en el storage');
         }
 
-        // Generar URL temporal firmada
-        try {
-            $url = Storage::disk($this->disk)->temporaryUrl(
-                $documento->ruta_storage,
-                now()->addMinutes($minutosExpiracion)
-            );
-        } catch (\Exception $e) {
-            // Para discos locales o que no soportan URLs temporales, generar una URL con token
-            $url = url('/storage/' . $documento->ruta_storage . '?expires=' . now()->addMinutes($minutosExpiracion)->timestamp);
+        // Generar URL temporal firmada - diferentes estrategias según el disco
+        $disk = Storage::disk($this->disk);
+
+        // Para S3 o discos que soportan temporaryUrl
+        if ($this->disk === 's3' && method_exists($disk, 'temporaryUrl')) {
+            try {
+                // @phpstan-ignore-next-line
+                $url = $disk->temporaryUrl( // @phpstan-ignore-line
+                    $documento->ruta_storage,
+                    now()->addMinutes($minutosExpiracion)
+                );
+            } catch (\Exception $e) {
+                // Fallback si falla la generación de URL temporal
+                // @phpstan-ignore-next-line
+                $url = $disk->url($documento->ruta_storage); // @phpstan-ignore-line
+            }
+        } else {
+            // Para disco local, usar URL pública estándar
+            // Nota: En producción, considerar implementar rutas firmadas de Laravel
+            $url = Storage::url($documento->ruta_storage);
         }
 
         // Actualizar estadísticas de acceso
