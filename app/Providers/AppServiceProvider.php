@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
+use App\Models\PacienteDocumento;
+use App\Policies\DocumentoMedicoPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Registrar Policy para documentos médicos
+        Gate::policy(PacienteDocumento::class, DocumentoMedicoPolicy::class);
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\DocumentoMedicoController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PermissionController;
@@ -74,6 +75,21 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Consultations
     Route::apiResource('consultations', \App\Http\Controllers\Api\ConsultationController::class);
+
+    // Documentos Médicos - Gestión documental de pacientes
+    Route::prefix('pacientes/{pacienteId}/documentos')->group(function () {
+        Route::get('/', [DocumentoMedicoController::class, 'index']);
+        Route::post('/', [DocumentoMedicoController::class, 'store'])->middleware('throttle:20,1'); // Máximo 20 subidas por minuto
+        Route::get('/exportar', [DocumentoMedicoController::class, 'exportar']);
+        Route::get('/{documentoId}', [DocumentoMedicoController::class, 'show']);
+        Route::get('/{documentoId}/url', [DocumentoMedicoController::class, 'obtenerUrl']);
+        Route::get('/{documentoId}/preview', [DocumentoMedicoController::class, 'preview']);
+        Route::get('/{documentoId}/descargar', [DocumentoMedicoController::class, 'descargar']);
+        Route::delete('/{documentoId}', [DocumentoMedicoController::class, 'destroy']);
+    });
+
+    // Subida por chunks para archivos grandes
+    Route::post('documentos/upload-chunk', [DocumentoMedicoController::class, 'uploadChunk'])->middleware('throttle:60,1');
 
     // Reports
     Route::get('reports/dashboard', [\App\Http\Controllers\Api\ReportController::class, 'dashboard']);

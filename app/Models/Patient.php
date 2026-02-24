@@ -40,6 +40,11 @@ class Patient extends Model
         return $this->hasMany(Reminder::class);
     }
 
+    public function documentos(): HasMany
+    {
+        return $this->hasMany(PacienteDocumento::class, 'paciente_id');
+    }
+
     public function doctors(): BelongsToMany
     {
         return $this->belongsToMany(Doctor::class);
